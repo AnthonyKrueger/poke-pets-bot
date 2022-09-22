@@ -1,18 +1,13 @@
 import cv2 as cv
 import os
 import time
-import sys
-from pynput import mouse, keyboard
-from pynput.mouse import Button
-import random
-import numpy as np
-import mss
 from trainer import Trainer
 
 path = os.path.dirname(os.path.dirname(__file__))
 img_path = os.path.join(path, 'img')
 img = cv.imread(os.path.join(img_path, "test_screenshot.png"))
 img2 = img.copy()
+
 
 def execute(ev):
     trainer = Trainer()
@@ -30,6 +25,7 @@ def execute(ev):
             trainer.battle()
         else:
             trainer.run_away()
+
 
 execute("atk")
 # trainer = Trainer()

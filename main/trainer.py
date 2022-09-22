@@ -4,7 +4,6 @@ import time
 import sys
 from pynput import mouse, keyboard
 from pynput.mouse import Button
-import random
 import numpy as np
 import mss
 import pydirectinput
@@ -20,7 +19,7 @@ class Trainer:
         self.mouse = mouse.Controller()
         self.keyboard = keyboard.Controller()
         self.mode = "EV"
-        self.targetted_ev = None
+        self.target_ev = None
         self.continue_walking = True
         self.direction = 0
 
@@ -31,7 +30,6 @@ class Trainer:
         self.mouse.release(Button.left)
 
     def step(self):
-        key = None
         if self.direction == 0:
             self.direction = 1
             key = keyboard.Key.up
@@ -41,7 +39,8 @@ class Trainer:
         self.keyboard.press(key)
         time.sleep(0.2)
 
-    def screen_shot(self, left=0, top=0, width=1920, height=1080):
+    @staticmethod
+    def screen_shot(left=0, top=0, width=1920, height=1080):
         stc = mss.mss()
         scr = stc.grab({
             'left': left,
@@ -119,6 +118,7 @@ class Trainer:
             self.keyboard.press(key)
             key_presses = key_presses - 1
             time.sleep(delay)
+
     def move_to_adventure_button(self):
         sc = self.screen_shot()
         template = cv.imread(os.path.join(self.img_path, "adv.png"))
@@ -155,10 +155,12 @@ class Trainer:
         threshold = 0.95
         loc = np.where(res >= threshold)
         for pt in zip(*loc[::-1]):
+            print(pt)
             used_moves += 1
         return used_moves
 
-    def template_match(self, template, screenshot):
+    @staticmethod
+    def template_match(template, screenshot):
         res = cv.matchTemplate(screenshot, template, cv.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv.minMaxLoc(res)
         return max_val
