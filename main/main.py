@@ -14,10 +14,10 @@ img_path = os.path.join(path, 'img')
 img = cv.imread(os.path.join(img_path, "test_screenshot.png"))
 img2 = img.copy()
 
-def execute():
+def execute(ev):
     trainer = Trainer()
     trainer.click_screen()
-    template = cv.imread(os.path.join(img_path, "atk.png"))
+    template = cv.imread(os.path.join(img_path, f"{ev}.png"))
     loop = True
     while loop:
         time.sleep(0.25)
@@ -31,5 +31,8 @@ def execute():
         else:
             trainer.run_away()
 
-
-execute()
+execute("atk")
+# trainer = Trainer()
+# trainer.click_screen()
+# time.sleep(1)
+# trainer.heal_and_reset()
