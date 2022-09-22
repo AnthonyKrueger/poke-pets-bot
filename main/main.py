@@ -20,14 +20,13 @@ def execute():
     template = cv.imread(os.path.join(img_path, "atk.png"))
     loop = True
     while loop:
-        time.sleep(0.5)
+        time.sleep(0.25)
         trainer.step()
         sc = trainer.screen_shot()
-        res = cv.matchTemplate(sc, template, cv.TM_CCOEFF_NORMED)
-        _, max_val, _, max_loc = cv.minMaxLoc(res)
-        if(max_val > 0.95):
+        match_percent = trainer.template_match(template, sc)
+        if match_percent > 0.9:
             trainer.enter()
-            time.sleep(1)
+            time.sleep(0.5)
             trainer.battle()
         else:
             trainer.run_away()
