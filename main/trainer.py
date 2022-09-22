@@ -62,13 +62,13 @@ class Trainer:
 
     def battle(self):
         time.sleep(0.5)
-        self.keyboard.press("1")
+        self.keyboard.press("3")
         time.sleep(0.5)
         in_battle = True
         while in_battle:
             used_moves = self.determine_used_moves()
             move_to_use = 2 + used_moves
-            if move_to_use > 4:
+            if move_to_use >= 4:
                 print("Out of moves")
                 sys.exit()
             self.keyboard.press(str(move_to_use))
@@ -100,7 +100,7 @@ class Trainer:
         time.sleep(1)
         self.go_to_fly_page()
         time.sleep(1)
-        self.press_key(keyboard.Key.down, 10, 0)
+        self.press_key(keyboard.Key.down, 40, 0)
         time.sleep(0.5)
         self.click_template("solar.png")
         time.sleep(1)

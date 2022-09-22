@@ -13,6 +13,7 @@ def execute(ev):
     trainer = Trainer()
     trainer.click_screen()
     template = cv.imread(os.path.join(img_path, f"{ev}.png"))
+    trainer.heal_and_reset()
     loop = True
     while loop:
         time.sleep(0.25)
