@@ -22,7 +22,7 @@ class Trainer:
         self.target_ev = None
         self.continue_walking = True
         self.direction = 0
-        self.current_action = "battle"
+        self.current_action = "start_heal"
         self.vision = Vision()
         self.moves_empty = False
 
