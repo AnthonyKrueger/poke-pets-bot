@@ -1,6 +1,8 @@
 import cv2 as cv
 import os
-import time
+from time import time, sleep
+from capture import WindowCapture
+from vision import Vision
 from trainer import Trainer
 
 path = os.path.dirname(os.path.dirname(__file__))
@@ -12,23 +14,22 @@ img2 = img.copy()
 def execute(ev):
     trainer = Trainer()
     trainer.click_screen()
-    template = cv.imread(os.path.join(img_path, f"{ev}.png"))
-    loop = True
-    while loop:
-        time.sleep(0.25)
-        trainer.step()
-        sc = trainer.screen_shot()
-        match_percent = trainer.template_match(template, sc)
-        if match_percent > 0.9:
-            trainer.enter()
-            time.sleep(0.5)
-            trainer.battle()
-        else:
-            trainer.run_away()
+    loop_time = time()
+    window_capture = WindowCapture()
+    while True:
+
+        screenshot = window_capture.get_screenshot()
+
+        trainer.decide_action(screenshot, ev, "3")
+
+        cv.imshow('Bot_Feed', screenshot)
+
+        print(f'FPS {1 / (time() - loop_time)}')
+        loop_time = time()
+
+        if cv.waitKey(1) == ord('q'):
+            cv.destroyAllWindows()
+            break
 
 
 execute("atk")
-# trainer = Trainer()
-# trainer.click_screen()
-# time.sleep(1)
-# trainer.heal_and_reset()
