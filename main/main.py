@@ -1,17 +1,16 @@
 import cv2 as cv
 import os
 from time import time
+import logging
 from capture import WindowCapture
 from trainer import Trainer
 from vision import Vision
 
 path = os.path.dirname(os.path.dirname(__file__))
 img_path = os.path.join(path, 'img')
-img = cv.imread(os.path.join(img_path, "test_screenshot.png"))
-img2 = img.copy()
 
 
-def execute(mode="ev", ev="atk", poke_slot="1", hunt_threshold=5, start_action=None):
+def execute(mode="ev", ev="any", poke_slot="1", hunt_threshold=5, start_action=None):
     window_capture = WindowCapture()
     vision = Vision()
     trainer = Trainer(window_capture, mode, start_action=start_action, target_ev=ev, slot=poke_slot)

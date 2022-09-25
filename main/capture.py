@@ -3,6 +3,7 @@ from time import sleep
 import win32gui
 import win32ui
 import win32con
+from threading import Thread, Lock
 
 
 def get_chrome_window_name():
@@ -25,6 +26,8 @@ class WindowCapture:
 
     def __init__(self):
 
+        self.lock = Lock()
+
         self.hwnd_target = get_chrome_window_name()
         self.hwnd = win32gui.FindWindow(None, self.hwnd_target)
         self.window_name = None
@@ -35,18 +38,19 @@ class WindowCapture:
         self.w = window_rect[2] - window_rect[0]
         self.h = window_rect[3] - window_rect[1]
         win32gui.SetForegroundWindow(self.hwnd)
+        win32gui.MoveWindow(self.hwnd, window_rect[0], window_rect[1], 1200, 900, True)
 
     def set_window(self):
         self.hwnd_target = get_chrome_window_name()
         self.hwnd = win32gui.FindWindow(None, self.hwnd_target)
         try:
             window_rect = win32gui.GetWindowRect(self.hwnd)
+            self.w = window_rect[2] - window_rect[0]
+            self.h = window_rect[3] - window_rect[1]
+            win32gui.SetForegroundWindow(self.hwnd)
         except Exception as e:
-            self.hwnd = win32gui.GetDesktopWindow()
-            window_rect = win32gui.GetWindowRect(self.hwnd)
-        self.w = window_rect[2] - window_rect[0]
-        self.h = window_rect[3] - window_rect[1]
-        win32gui.SetForegroundWindow(self.hwnd)
+            self.set_window()
+
 
     def get_screenshot(self):
         self.set_window()
@@ -73,7 +77,6 @@ class WindowCapture:
         img = np.ascontiguousarray(img)
 
         return img
-
 
     # def get_screen_position(self, pos):
     #     return (pos[0] + self.offset_x, pos[1] + self.offset_y)

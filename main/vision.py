@@ -9,6 +9,7 @@ green = (0, 255, 0)
 red = (0, 0, 255)
 yellow = (0, 255, 255)
 
+
 class Vision:
 
     def __init__(self, method=cv.TM_CCOEFF_NORMED):
@@ -74,13 +75,19 @@ class Vision:
         tsc_color = self.determine_tsc_color(trainer)
         thickness = 1
 
-        cv.rectangle(screenshot, (25, 30), (600, 120), (25, 25, 25), -1)
+        cv.rectangle(screenshot, (25, 30), (500, 110), (25, 25, 25), -1)
         cv.putText(screenshot, f'FPS: {fps}', (50, 50), font, font_scale, fps_color, thickness, cv.LINE_AA)
         cv.putText(screenshot, f'Action: {trainer.current_action}', (50, 75), font, font_scale, (0, 255, 255), thickness,
                    cv.LINE_AA)
         cv.putText(screenshot, f'TSC: {round(trainer.time_since_change, 2)}', (50, 100), font, font_scale, tsc_color, thickness,
                    cv.LINE_AA)
-        cv.putText(screenshot, f'RT: {round((time() - trainer.init_time), 0)}', (150, 50), font, font_scale, green, thickness,
+        cv.putText(screenshot, f'RT: {round((time() - trainer.init_time))}', (130, 50), font, font_scale, green, thickness,
+                   cv.LINE_AA)
+        cv.putText(screenshot, f'Enc: {trainer.encounters}', (300, 50), font, font_scale, green, thickness,
+                   cv.LINE_AA)
+        cv.putText(screenshot, f'Sur: {trainer.surrenders}', (300, 75), font, font_scale, green, thickness,
+                   cv.LINE_AA)
+        cv.putText(screenshot, f'Cap: {trainer.captchas}', (300, 100), font, font_scale, green, thickness,
                    cv.LINE_AA)
         if points:
             display_screenshot = self.draw_crosshairs(screenshot, points)
