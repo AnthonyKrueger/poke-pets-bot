@@ -202,6 +202,7 @@ class Trainer:
                 self.action_click_confirm_escape()
 
     def set_next_action(self, next_action):
+        self.time_since_change = 0
         self.logger.debug(f'Action: {self.current_action}, Points: {self.points}')
         self.current_action = next_action
         self.reset_points_and_target()
@@ -307,20 +308,24 @@ class Trainer:
         if self.points:
             self.set_next_action("click_battle_button")
         else:
-            self.press_key("r", 1, 0.2)
+            self.press_key("r", 1, 0.4)
             self.step()
 
     def action_begin_battle(self):
-        self.current_target = 'in_battle.png'
+        self.current_target = 'poke_sel.png'
         if self.points:
+            self.press_key(self.slot, 1, 0.5)
+            self.logger.info("Battle started")
             self.set_next_action("battle")
             self.encounters += 1
-        else:
-            self.press_key(self.slot, 1, 0.5)
+
+    # def action_choose_pokemon(self):
+        
 
     def action_exit_battle(self):
         self.current_target = 'out_battle.png'
         if self.points:
+            self.logger.info("Battle won")
             self.set_next_action("walk_for_battle")
             self.press_key(keyboard.Key.enter, 2, 0.2)
         else:
@@ -330,6 +335,7 @@ class Trainer:
         self.current_target = 'surrender.png'
         if self.points:
             self.surrenders += 1
+            self.logger.info("Surrendering battle")
             pydirectinput.click(self.points[0][0], self.points[0][1])
             self.set_next_action("click_surrender_ok")
         elif self.time_since_change > 2:
@@ -353,6 +359,7 @@ class Trainer:
             if self.cap_box_clicked:
                 self.cap_box_clicked = False
                 self.captchas += 1
+                self.logger.info("Captcha workaround successful")
                 self.set_next_action('walk_for_battle')
             else:
                 self.set_next_action('check_cap_box')
@@ -394,10 +401,12 @@ class Trainer:
             self.set_next_action("click_conf_esc")
 
     def determine_if_need_fix(self):
-        longer_actions = ['walk_for_battle', 'battle']
+        longer_actions = ['walk_for_battle', 'battle', 'go_solar']
         if self.current_action not in longer_actions and self.time_since_change > 10:
+            self.logger.error(f"Detected need for fix. Action = {self.current_action}")
             return True
         elif self.current_action in longer_actions and self.time_since_change > 30:
+            self.logger.error(f"Detected need for fix. Action = {self.current_action}")
             return True
         else:
             return False
@@ -408,6 +417,7 @@ class Trainer:
         if self.pre_fix_action == "click_battle_button":
             self.set_next_action("walk_for_battle")
         if self.time_since_change > 10:
+            self.press_key('r', 1, 0.2)
             self.set_next_action("start_heal")
 
     def determine_battle_action(self, screenshot):
@@ -444,6 +454,7 @@ class Trainer:
         self.current_target = 'cap2.png'
         points = self.find_and_draw(screenshot, 'cap2.png', 0.95)
         if points:
+            self.logger.warning("Captcha detected, attempting workaround")
             self.pre_cap_action = self.current_action
             self.set_next_action("check_cap_button")
 
@@ -476,7 +487,7 @@ class Trainer:
             self.direction = 0
             key = keyboard.Key.down
         self.keyboard.press(key)
-        time.sleep(0.25)
+        time.sleep(0.4)
 
     def press_key(self, key, amount, delay):
         key_presses = amount
