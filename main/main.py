@@ -1,9 +1,9 @@
 import cv2 as cv
 import os
-from time import time, sleep
+from time import time
 from capture import WindowCapture
-from vision import Vision
 from trainer import Trainer
+from vision import Vision
 
 path = os.path.dirname(os.path.dirname(__file__))
 img_path = os.path.join(path, 'img')
@@ -11,25 +11,40 @@ img = cv.imread(os.path.join(img_path, "test_screenshot.png"))
 img2 = img.copy()
 
 
-def execute(ev):
-    trainer = Trainer()
-    trainer.click_screen()
-    loop_time = time()
+def execute(mode="ev", ev="atk", poke_slot="1", hunt_threshold=5, start_action=None):
     window_capture = WindowCapture()
+    vision = Vision()
+    trainer = Trainer(window_capture, mode, start_action=start_action, target_ev=ev, slot=poke_slot)
+    loop_time = time()
+    fps = 0
+
+    trainer.start()
+
     while True:
 
         screenshot = window_capture.get_screenshot()
 
-        trainer.decide_action(screenshot, ev, "3")
+        points = None
 
-        cv.imshow('Bot_Feed', screenshot)
+        if trainer.current_target is not None:
+            trainer.update_screenshot(screenshot)
+            rectangles = vision.find(trainer.current_target, screenshot, 0.95)
+            if len(rectangles) > 0:
+                points = vision.get_click_points(rectangles)
+                trainer.update_points(points)
 
-        print(f'FPS {1 / (time() - loop_time)}')
+        display_screenshot = screenshot.copy()
+        display_screenshot = vision.write_and_draw_output(display_screenshot, trainer, points, fps)
+
+        cv.imshow('Bot_Feed', display_screenshot)
+
+        fps = round(1 / (time() - loop_time))
         loop_time = time()
 
         if cv.waitKey(1) == ord('q'):
             cv.destroyAllWindows()
+            trainer.stop()
             break
 
 
-execute("atk")
+execute(mode="ev", hunt_threshold=5, ev="any", poke_slot="2", start_action="walk_for_battle")

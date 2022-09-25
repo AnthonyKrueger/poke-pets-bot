@@ -1,24 +1,32 @@
-import cv2 as cv
 import numpy as np
-import os
-from time import time
+from time import sleep
 import win32gui
 import win32ui
 import win32con
 
-window_names = []
+
+def get_chrome_window_name():
+    windows = list_window_names()
+    for window in windows:
+        if "Google Chrome" in window["name"]:
+            return window["name"]
 
 
-def winEnumHandler( hwnd, ctx ):
-    if win32gui.IsWindowVisible( hwnd ):
-        window_names.append(win32gui.GetWindowText( hwnd ))
+def list_window_names():
+    windows = []
+    def winEnumHandler(hwnd, ctx):
+        if win32gui.IsWindowVisible(hwnd):
+            windows.append({"hex": hex(hwnd), "name": win32gui.GetWindowText(hwnd)})
+    win32gui.EnumWindows(winEnumHandler, None)
+    return windows
 
 
 class WindowCapture:
 
     def __init__(self):
 
-        self.hwnd = win32gui.GetDesktopWindow()
+        self.hwnd_target = get_chrome_window_name()
+        self.hwnd = win32gui.FindWindow(None, self.hwnd_target)
         self.window_name = None
         self.ow = 1920
         self.oh = 1080
@@ -26,20 +34,24 @@ class WindowCapture:
         window_rect = win32gui.GetWindowRect(self.hwnd)
         self.w = window_rect[2] - window_rect[0]
         self.h = window_rect[3] - window_rect[1]
+        win32gui.SetForegroundWindow(self.hwnd)
 
-        border_pixels = 8
-        titlebar_pixels = 30
-        self.w = self.w - (border_pixels * 2)
-        self.h = self.h - titlebar_pixels - border_pixels
-        self.cropped_x = border_pixels
-        self.cropped_y = titlebar_pixels
-
-        self.offset_x = window_rect[0] + self.cropped_x
-        self.offset_y = window_rect[1] + self.cropped_y
+    def set_window(self):
+        self.hwnd_target = get_chrome_window_name()
+        self.hwnd = win32gui.FindWindow(None, self.hwnd_target)
+        try:
+            window_rect = win32gui.GetWindowRect(self.hwnd)
+        except Exception as e:
+            self.hwnd = win32gui.GetDesktopWindow()
+            window_rect = win32gui.GetWindowRect(self.hwnd)
+        self.w = window_rect[2] - window_rect[0]
+        self.h = window_rect[3] - window_rect[1]
+        win32gui.SetForegroundWindow(self.hwnd)
 
     def get_screenshot(self):
-
-        wdc = win32gui.GetWindowDC(self.hwnd)
+        self.set_window()
+        hdesktop = win32gui.GetDesktopWindow()
+        wdc = win32gui.GetWindowDC(hdesktop)
         dc_obj = win32ui.CreateDCFromHandle(wdc)
         cdc = dc_obj.CreateCompatibleDC()
         data_bit_map = win32ui.CreateBitmap()
@@ -62,5 +74,6 @@ class WindowCapture:
 
         return img
 
-    def get_screen_position(self, pos):
-        return (pos[0] + self.offset_x, pos[1] + self.offset_y)
+
+    # def get_screen_position(self, pos):
+    #     return (pos[0] + self.offset_x, pos[1] + self.offset_y)
