@@ -17,7 +17,9 @@ class Trainer:
         self.encounters = 0
         self.surrenders = 0
         self.captchas = 0
+        self.in_captcha_check = False
         self.shinies = 0
+        self.legends = 0
 
         # Threading properties
         self.lock = Lock()
@@ -36,12 +38,13 @@ class Trainer:
         self.keyboard = keyboard.Controller()
 
         # General properties
-        self.current_target = 'any.png'
+        self.target = 'decoy.png'
         self.slot = slot
         self.mode = mode
         self.points = None
         self.screenshot = None
         self.cap_box_clicked = False
+        self.mon_to_select = 1
 
         # Time Keeping
         self.time_since_change = 0
@@ -50,11 +53,11 @@ class Trainer:
         # EV Training Variables
         self.target_ev = target_ev
         self.direction = 0
-        self.pause_for_shinies = True
+        self.pause_for_shinies = False
 
         # Log Config
         self.logger = logging.getLogger('trainer')
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.INFO)
         start_time = time.strftime('%m-%d@%H-%M')
         log_path = f'../logs/{start_time}.log'
         fh = logging.FileHandler(log_path, mode='a', encoding=None, delay=False)
@@ -179,27 +182,94 @@ class Trainer:
             case "check_cap_box":
                 self.check_cap_box()
 
+            case "check_if_conf_esc":
+                self.check_if_esc_conf()
+
             case "click_conf_esc":
-                self.action_click_confirm_escape()
+                self.action_click_confirm_escape("walk_for_battle")
+
+            case "catch_loop":
+                self.determine_action_catch_loop()
+
+            case "select_mon":
+                self.select_mon_catch_loop()
 
             case "pause_for_shiny":
                 print("SHINY!")
 
     def decide_action_hunt(self, screenshot, threshold):
-        self.check_for_captcha(screenshot)
+        if self.time_since_change > 30 and not self.in_captcha_check:
+            self.check_for_captcha(screenshot)
         match self.current_action:
 
+            case "start_heal":
+                self.action_move_to_adventure("heal")
+
+            case "click_fly_button_heal":
+                self.action_click_fly_button("go_starfall")
+
+            case "go_starfall":
+                self.action_fly_to_starfall()
+
+            case "click_heal":
+                self.action_click_heal()
+
+            case "exit_heal":
+                self.action_click_exit_heal()
+
+            case "begin_reset":
+                self.action_move_to_adventure("solar")
+
+            case "click_fly_button_solar":
+                self.action_click_fly_button('go_solar')
+
+            case "go_solar":
+                self.action_fly_to_solar()
+
+            case "reset_position":
+                self.action_reset_position()
+
             case "hunt":
-                stars = self.determine_rare_mon_type()
-                if threshold > stars > 3:
-                    time.sleep(0.3)
-                    self.current_action = "click_try_run"
+                self.action_hunt()
 
             case "click_try_run":
                 self.action_click_try_run()
 
-            case "click_confirm_escape":
-                self.action_click_confirm_escape()
+            case "check_if_ur":
+                self.check_if_ur()
+
+            case "check_if_shiny":
+                self.check_if_shiny()
+
+            case "check_if_legend":
+                self.check_if_legend()
+
+            case "catch_loop":
+                self.determine_action_catch_loop()
+
+            case "select_mon":
+                self.select_mon_catch_loop()
+
+            case "click_conf_esc":
+                self.action_click_confirm_escape("hunt")
+
+            case "check_cap_button":
+                self.check_cap_button()
+
+            case "check_cap_box":
+                self.check_cap_box()
+
+            case "turn_on_auto":
+                self.turn_on_auto_mode()
+
+            case "turn_off_auto":
+                self.turn_off_auto_mode()
+
+            case "turn_off_auto":
+                self.turn_off_auto_mode()
+
+            case "click_esc_heal":
+                self.check_and_click_esc("start_heal")
 
     def set_next_action(self, next_action):
         self.time_since_change = 0
@@ -208,47 +278,62 @@ class Trainer:
         self.reset_points_and_target()
 
     def debug_print(self):
-        self.logger.debug(f"Points: {self.points}, Target: {self.current_target}, Action: {self.current_action}")
+        self.logger.debug(f"Points: {self.points}, Target: {self.target}, Action: {self.current_action}")
+
+    def action_hunt(self):
+        self.target = "esc_conf.png"
+        if self.points:
+            self.encounters += 1
+            self.set_next_action("check_if_ur")
+        else:
+            self.press_key('r', 1, 0.5)
 
     def action_move_to_adventure(self, next_action):
-        self.current_target = 'adv.png'
+        self.target = 'adv.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             time.sleep(0.2)
             pydirectinput.moveTo(self.points[0][0], self.points[0][1])
             self.set_next_action(f"click_fly_button_{next_action}")
             time.sleep(0.1)
 
-    def action_click_confirm_escape(self):
-        self.current_target = 'esc_conf.png'
+    def action_click_confirm_escape(self, next_action):
+        self.target = 'esc_conf.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             pydirectinput.click(self.points[0][0], self.points[0][1])
             if self.mode == 'hunt':
-                self.set_next_action("hunt")
-            else:
-                self.set_next_action("walk_for_battle")
-            time.sleep(0.5)
+                time.sleep(0.1)
+            self.set_next_action(next_action)
+            time.sleep(0.3)
 
     def action_click_battle_button(self):
-        self.current_target = 'any.png'
+        self.target = 'any.png'
         if self.points:
             pydirectinput.click(self.points[0][0], self.points[0][1])
             self.set_next_action("begin_battle")
 
     def action_click_try_run(self):
-        self.current_target = 'try_run.png'
+        self.target = 'try_run.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             pydirectinput.click(self.points[0][0], self.points[0][1])
             self.set_next_action("click_conf_escape")
 
     def action_click_fly_button(self, next_action):
-        self.current_target = 'fly.png'
+        self.target = 'fly.png'
         if self.points:
             time.sleep(0.3)
             pydirectinput.click(self.points[0][0], self.points[0][1])
             self.set_next_action(next_action)
 
     def action_fly_to_starfall(self):
-        self.current_target = 'starfall.png'
+        self.target = 'starfall.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             pydirectinput.click(self.points[0][0], self.points[0][1])
             time.sleep(0.5)
@@ -259,12 +344,14 @@ class Trainer:
             time.sleep(0.1)
 
     def reset_points_and_target(self):
-        self.current_target = None
+        self.target = None
         time.sleep(0.1)
         self.points = None
 
     def action_fly_to_solar(self):
-        self.current_target = 'solar.png'
+        self.target = 'solar.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             time.sleep(0.2)
             pydirectinput.click(self.points[0][0], self.points[0][1])
@@ -276,54 +363,112 @@ class Trainer:
             time.sleep(0.1)
 
     def action_reset_position(self):
-        self.press_key(keyboard.Key.down, 13, 0.2)
-        self.press_key('r', 1, 0.2)
-        count = 0
-        while count <= 8:
-            self.press_key(keyboard.Key.down, 1, 0.2)
+        if self.mode == "ev":
+            self.press_key(keyboard.Key.down, 13, 0.2)
             self.press_key('r', 1, 0.2)
-            count += 1
-        self.press_key(keyboard.Key.left, 1, 0.2)
-        self.press_key('r', 1, 0.2)
-        self.press_key(keyboard.Key.left, 1, 0.2)
-        self.press_key('r', 1, 0.2)
-        self.press_key(keyboard.Key.left, 1, 0.2)
-        self.press_key('r', 1, 0.2)
-        self.current_action = "walk_for_battle"
+            count = 0
+            while count <= 8:
+                self.press_key(keyboard.Key.down, 1, 0.2)
+                self.press_key('r', 1, 0.2)
+                count += 1
+            self.press_key(keyboard.Key.left, 1, 0.2)
+            self.press_key('r', 1, 0.2)
+            self.press_key(keyboard.Key.left, 1, 0.2)
+            self.press_key('r', 1, 0.2)
+            self.press_key(keyboard.Key.left, 1, 0.2)
+            self.press_key('r', 1, 0.2)
+            self.current_action = "walk_for_battle"
+        elif self.mode == "hunt":
+            self.press_key(keyboard.Key.down, 1, 0.2)
+            self.press_key(keyboard.Key.left, 5, 0.2)
+            self.press_key("q", 1, 0.2)
+            self.current_action = "hunt"
 
     def action_click_heal(self):
-        self.current_target = 'heal.png'
+        self.target = 'heal.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             pydirectinput.click(self.points[0][0], self.points[0][1])
             self.set_next_action("exit_heal")
 
+    def select_mon_catch_loop(self):
+        self.target = 'poke_sel.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
+        if self.points:
+            if self.mon_to_select > 6:
+                self.mon_to_select = 1
+            self.press_key(f"{self.mon_to_select}", 1, 1)
+            self.mon_to_select += 1
+            self.reset_points_and_target()
+            self.target = 'poke_sel.png'
+        elif self.check_if_battle_over():
+            self.logger.info("Capture failed, returning to heal")
+            self.mon_to_select = 1
+            self.press_key(keyboard.Key.enter, 3, 0.3)
+            if self.mode == "hunt":
+                self.set_next_action('turn_off_auto')
+        elif self.check_if_in_battle():
+            self.mon_to_select = 1
+            self.set_next_action('catch_loop')
+
+    def determine_action_catch_loop(self):
+        used_moves = self.determine_used_moves(self.screenshot)
+        dead = self.check_if_dead(self.screenshot)
+        self.target = "battle_finish.png"
+        if self.mode == "hunt":
+            time.sleep(0.2)
+        if self.points:
+            if dead == 'self':
+                self.logger.info("Capture failed, returning to heal")
+            else:
+                self.logger.info("Capture successful!")
+            time.sleep(0.5)
+            self.press_key(keyboard.Key.enter, 3, 0.3)
+            if self.mode == "hunt":
+                time.sleep(0.3)
+                self.set_next_action("turn_off_auto")
+            else:
+                self.set_next_action("start_heal")
+        elif dead == "self" or self.check_for_struggle(self.screenshot):
+            time.sleep(0.2)
+            self.press_key("q", 1, 0.3)
+            self.set_next_action("select_mon")
+        else:
+            move_to_use = 1 + used_moves
+            if move_to_use > 4:
+                move_to_use = 1
+            self.press_key("t", 1, 0.2)
+            self.press_key(f"{move_to_use}", 1, 0.2)
+
     def action_click_exit_heal(self):
-        self.current_target = 'heal_return.png'
+        self.target = 'heal_return.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
         if self.points:
             pydirectinput.click(self.points[0][0], self.points[0][1])
             self.set_next_action("begin_reset")
 
     def action_walk_for_battle(self):
-        self.current_target = f'{self.target_ev}.png'
+        self.target = f'{self.target_ev}.png'
+        time.sleep(0.3)
         if self.points:
             self.set_next_action("click_battle_button")
         else:
-            self.press_key("r", 1, 0.4)
+            self.press_key("r", 1, 0.2)
             self.step()
 
     def action_begin_battle(self):
-        self.current_target = 'poke_sel.png'
+        self.target = 'poke_sel.png'
         if self.points:
+            self.encounters += 1
             self.press_key(self.slot, 1, 0.5)
             self.logger.info("Battle started")
             self.set_next_action("battle")
-            self.encounters += 1
-
-    # def action_choose_pokemon(self):
-        
 
     def action_exit_battle(self):
-        self.current_target = 'out_battle.png'
+        self.target = 'out_battle.png'
         if self.points:
             self.logger.info("Battle won")
             self.set_next_action("walk_for_battle")
@@ -332,7 +477,7 @@ class Trainer:
             self.press_key(keyboard.Key.enter, 1, 0.2)
 
     def action_surrender_battle(self):
-        self.current_target = 'surrender.png'
+        self.target = 'surrender.png'
         if self.points:
             self.surrenders += 1
             self.logger.info("Surrendering battle")
@@ -343,7 +488,7 @@ class Trainer:
             self.set_next_action("start_heal")
 
     def action_click_ok_surrender(self):
-        self.current_target = 'chrome_ok.png'
+        self.target = 'chrome_ok.png'
         if self.points:
             pydirectinput.leftClick(self.points[0][0], self.points[0][1], 0.1, 1)
             self.press_key(keyboard.Key.enter, 2, 0.5)
@@ -352,7 +497,7 @@ class Trainer:
             self.set_next_action("start_heal")
 
     def check_cap_button(self):
-        self.current_target = 'cap1.png'
+        self.target = 'cap1.png'
         if self.points:
             pydirectinput.leftClick(self.points[0][0], self.points[0][1], 0.1, 1)
             time.sleep(2)
@@ -360,56 +505,130 @@ class Trainer:
                 self.cap_box_clicked = False
                 self.captchas += 1
                 self.logger.info("Captcha workaround successful")
-                self.set_next_action('walk_for_battle')
+                self.in_captcha_check = False
+                if self.mode == "hunt":
+                    self.set_next_action('turn_on_auto')
+                elif self.mode == "ev":
+                    self.set_next_action('walk_for_battle')
             else:
                 self.set_next_action('check_cap_box')
 
+    def check_and_click_esc(self, next_action):
+        self.target = "esc_conf.png"
+        time.sleep(0.2)
+        if self.points:
+            pydirectinput.leftClick(self.points[0][0], self.points[0][1], 0.1, 1)
+            self.set_next_action(next_action)
+        elif self.time_since_change > 2:
+            self.set_next_action(next_action)
+
+    def turn_on_auto_mode(self):
+        self.target = "auto_mode.png"
+        time.sleep(0.2)
+        if self.points:
+            self.set_next_action("hunt")
+        elif self.time_since_change > 5:
+            self.press_key("q", 0.2, 1)
+            self.set_next_action("hunt")
+
+    def turn_off_auto_mode(self):
+        self.target = "auto_mode_on.png"
+        time.sleep(0.2)
+        if self.points:
+            self.press_key("q", 0.2, 1)
+            self.press_key("r", 2, 0.2)
+            self.set_next_action("click_esc_heal")
+        elif self.time_since_change > 5:
+            self.press_key("r", 2, 0.2)
+            self.set_next_action("click_esc_heal")
+
     def check_cap_box(self):
-        self.current_target = 'cap2.png'
+        self.target = 'cap2.png'
         if self.points:
             pydirectinput.leftClick(self.points[0][0], self.points[0][1], 0.1, 1)
             self.cap_box_clicked = True
             time.sleep(2)
             self.set_next_action('check_cap_button')
+        elif self.time_since_change > 3:
+            self.set_next_action('check_cap_button')
+
+    def check_if_in_battle(self):
+        points = self.find_and_draw(self.screenshot, 'in_battle.png', 0.95)
+        if points:
+            return True
+        return False
+
+    def check_if_battle_over(self):
+        points = self.find_and_draw(self.screenshot, 'battle_finish.png', 0.95)
+        if points:
+            return True
+        return False
 
     def check_if_esc_conf(self):
-        self.current_target = 'esc_conf.png'
+        self.target = 'esc_conf.png'
         if self.points:
+            self.logger.info("Escape confirmation detected, checking rarity")
             self.in_fix_mode = False
             self.fix_attempts = 0
             self.set_next_action("check_if_ur")
-        if self.time_since_change > 10:
+        if self.time_since_change > 3:
             self.fix_attempts += 1
             self.set_next_action("debug_ev")
 
     def check_if_ur(self):
-        self.current_target = 'ur_esc.png'
-        if self.points:
-            self.set_next_action("click_conf_esc")
+        self.target = 'ur_esc.png'
+        time.sleep(0.2)
+        if self.mode == "ev":
+            if self.points:
+                self.logger.info("UR, escaping")
+                self.set_next_action("click_conf_esc")
+        elif self.mode == "hunt":
+            if self.points:
+                self.logger.info("UR encountered, escaping")
+                self.set_next_action('click_conf_esc')
         if self.time_since_change > 2:
             self.set_next_action("check_if_shiny")
 
     def check_if_shiny(self):
-        self.current_target = 'shiny_esc.png'
+        self.target = 'shiny_esc.png'
+        time.sleep(0.2)
         if self.points:
             self.shinies += 1
             if self.pause_for_shinies:
                 self.set_next_action("pause_for_shiny")
             else:
-                self.set_next_action("click_conf_esc")
+                self.logger.info("Shiny encountered, attempting catch")
+                self.press_key(keyboard.Key.enter, 2, 0.2)
+                self.set_next_action("select_mon")
+        if self.time_since_change > 2:
+            self.set_next_action("check_if_legend")
+
+    def check_if_legend(self):
+        self.target = 'legend.png'
+        time.sleep(0.2)
+        if self.points:
+            self.legends += 1
+            if self.pause_for_shinies:
+                self.set_next_action("pause_for_shiny")
+            else:
+                self.logger.info("Legend encountered, attempting catch")
+                self.press_key(keyboard.Key.enter, 2, 0.2)
+                self.set_next_action("select_mon")
         if self.time_since_change > 2:
             self.set_next_action("click_conf_esc")
 
     def determine_if_need_fix(self):
-        longer_actions = ['walk_for_battle', 'battle', 'go_solar']
-        if self.current_action not in longer_actions and self.time_since_change > 10:
-            self.logger.error(f"Detected need for fix. Action = {self.current_action}")
-            return True
-        elif self.current_action in longer_actions and self.time_since_change > 30:
-            self.logger.error(f"Detected need for fix. Action = {self.current_action}")
-            return True
-        else:
-            return False
+        if self.mode == "ev":
+            longer_actions = ['walk_for_battle', 'battle', 'go_solar']
+            if self.current_action not in longer_actions and self.time_since_change > 10:
+                self.logger.error(f"Detected need for fix. Action = {self.current_action}")
+                return True
+            elif self.current_action in longer_actions and self.time_since_change > 10:
+                self.logger.error(f"Detected need for fix. Action = {self.current_action}")
+                return True
+            else:
+                return False
+        return False
 
     def determine_fix_ev(self):
         if self.pre_fix_action == "walk_for_battle":
@@ -423,6 +642,7 @@ class Trainer:
     def determine_battle_action(self, screenshot):
         used_moves = self.determine_used_moves(screenshot)
         dead = self.check_if_dead(screenshot)
+        self.target = "battle_finish.png"
         if dead == "enemy":
             self.set_next_action("exit_battle")
         elif dead == "self" or self.check_for_struggle(screenshot):
@@ -436,7 +656,7 @@ class Trainer:
             self.press_key(f"{move_to_use}", 1, 0.1)
 
     def determine_rare_mon_type(self):
-        self.current_target = 'rarity_star.png'
+        self.target = 'rarity_star.png'
         if self.points:
             self.reset_points_and_target()
             return len(self.points)
@@ -451,10 +671,13 @@ class Trainer:
             self.last_action = self.current_action
 
     def check_for_captcha(self, screenshot):
-        self.current_target = 'cap2.png'
-        points = self.find_and_draw(screenshot, 'cap2.png', 0.95)
+        self.target = 'cap1.png'
+        if self.mode == "hunt":
+            time.sleep(0.2)
+        points = self.find_and_draw(screenshot, 'cap1.png', 0.95)
         if points:
             self.logger.warning("Captcha detected, attempting workaround")
+            self.in_captcha_check = True
             self.pre_cap_action = self.current_action
             self.set_next_action("check_cap_button")
 
@@ -471,12 +694,10 @@ class Trainer:
         self.mouse.release(Button.left)
 
     def find_and_draw(self, screenshot, template, threshold):
-        self.current_target = template
         rectangles = self.vision.find(template, screenshot, threshold)
         if len(rectangles) > 0:
             points = self.vision.get_click_points(rectangles)
             self.vision.draw_crosshairs(screenshot, points)
-            print(points)
             return points
 
     def step(self):
@@ -487,7 +708,6 @@ class Trainer:
             self.direction = 0
             key = keyboard.Key.down
         self.keyboard.press(key)
-        time.sleep(0.4)
 
     def press_key(self, key, amount, delay):
         key_presses = amount

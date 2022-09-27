@@ -1,7 +1,6 @@
 import cv2 as cv
 import os
 from time import time
-import logging
 from capture import WindowCapture
 from trainer import Trainer
 from vision import Vision
@@ -25,9 +24,9 @@ def execute(mode="ev", ev="any", poke_slot="1", hunt_threshold=5, start_action=N
 
         points = None
 
-        if trainer.current_target is not None:
+        if trainer.target is not None:
             trainer.update_screenshot(screenshot)
-            rectangles = vision.find(trainer.current_target, screenshot, 0.95)
+            rectangles = vision.find(trainer.target, screenshot, 0.95)
             if len(rectangles) > 0:
                 points = vision.get_click_points(rectangles)
                 trainer.update_points(points)
@@ -46,4 +45,4 @@ def execute(mode="ev", ev="any", poke_slot="1", hunt_threshold=5, start_action=N
             break
 
 
-execute(mode="ev", hunt_threshold=5, ev="any", poke_slot="2", start_action="walk_for_battle")
+execute(mode="ev", hunt_threshold=5, ev="atk", poke_slot="2", start_action="start_heal")
